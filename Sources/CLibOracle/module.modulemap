@@ -1,6 +1,6 @@
 
 module CLibOracle {
   header "shim.h"
-  link "libclntsh"
+  link "clntsh"
   export *
 }

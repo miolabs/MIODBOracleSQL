@@ -8,7 +8,7 @@
 #ifndef liboracle_shim_h
 #define liboracle_shim_h
 
-#import <odbcinst.h>
+#import <oci.h>
 
 #endif /* shim_h */
 

@@ -2,9 +2,21 @@
 
 A description of this package.
 
+#INSTALLATION
+
+macOS:
+$ brew tap InstantClientTap/instantclient
+$ brew install instantclient-basic
+$ brew install instantclient-sdk
+
+Optional: 
+$ brew install instantclient-sqlplus
+
+
 #CREDITS
 
 https://marschall.github.io/2020/04/12/oracle-docker-container.html
+
 
 Setting up an Oracle Docker Container for Local Testing
 

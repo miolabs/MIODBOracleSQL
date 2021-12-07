@@ -139,13 +139,15 @@ open class MIODBOracleSQL: MIODB
         var status = OCIStmtPrepare2( OpaquePointer(svc), &stmt, OpaquePointer(err), makeCString(query), ub4(query.count), nil, 0, ub4(OCI_NTV_SYNTAX), ub4(OCI_DEFAULT) )
         LogStatus(status, err)
         
-//        var type = 0
-//        var type_len = ub4(0)
-//        status = OCIAttrGet( stmt, ub4(OCI_HTYPE_STMT), &type, &type_len, ub4(OCI_ATTR_STMT_TYPE), OpaquePointer(err) )
-//        LogStatus(status, err)
+        var type = 0
+        var type_len = ub4(0)
+        status = OCIAttrGet( UnsafeRawPointer(stmt), ub4(OCI_HTYPE_STMT), &type, &type_len, ub4(OCI_ATTR_STMT_TYPE), OpaquePointer(err) )
+        LogStatus(status, err)
+        
         
         /* execute and fetch */
-        status = OCIStmtExecute( OpaquePointer(svc), stmt, OpaquePointer(err), 0, 0, nil, nil, ub4(OCI_DEFAULT) )
+        
+        status = OCIStmtExecute( OpaquePointer(svc), stmt, OpaquePointer(err), type == OCI_STMT_SELECT ? 0 : 1, 0, nil, nil, ub4(OCI_DEFAULT) )
         LogStatus(status, err)
                         
         if (status == OCI_NO_DATA) { return [] }
@@ -257,8 +259,8 @@ class Field {
 //        _value = result.baseAddress!
                 
 //        if type == 1 {
-            _value = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: Int(1000))
-        status = OCIDefineByPos( stmt, &define, OpaquePointer(err), index, _value!.baseAddress, sb4(1000), ub2(SQLT_STR), nil, &len, &rcode, ub4(OCI_DEFAULT) )
+            _value = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: Int(1024))
+        status = OCIDefineByPos( stmt, &define, OpaquePointer(err), index, _value!.baseAddress, sb4(1024), ub2(SQLT_STR), nil, &len, &rcode, ub4(OCI_DEFAULT) )
              LogStatus(status, err)
 
 //        }
@@ -274,14 +276,20 @@ class Field {
     func convertValue() -> Any? {
                     
         switch (type) {
-            case 1:
-                _value!.baseAddress![Int(len)] = 0
-                return String(cString: _value!.baseAddress!)
-            case 2:
-            _value!.baseAddress![Int(len)] = 0
+        case 1, 5, 6, 9:
+//            _value!.baseAddress![Int(len)] = 0
             return String(cString: _value!.baseAddress!)
+        case 2, 4:
+            let v = String(cString: _value!.baseAddress!)
+            return MIOCoreDecimalValue(v, nil)
+        case 3, 8:
+            let v = String(cString: _value!.baseAddress!)
+            return MIOCoreIntValue(v, nil)
+        case 12:
+            let v = String(cString: _value!.baseAddress!)
+            return MIOCoreDate(fromString: v)
 
-            default: return nil
+        default: return nil
         }
 
     }

@@ -121,7 +121,7 @@ open class MIODBOracleSQL: MIODB, MDBQueryProtocol
     
     @discardableResult open override func execute(_ query: MDBQuery) throws -> [[String : Any]]? {
         query.delegate = self
-        super.execute( query )
+        return try super.execute( query )
     }
     
     @discardableResult open override func executeQueryString(_ query:String) throws -> [[String : Any]]? {
@@ -205,13 +205,18 @@ open class MIODBOracleSQL: MIODB, MDBQueryProtocol
     }
     
     public func upsert(table: String, values: [(key: String, value: MDBValue)], conflict: String, returning: [String]) -> String? {
-        guard let conflict_value = values.find{ kv => kv.key == conflict }?.value else { return nil }
-        let insert_keys   = values.map( kv => MDBValue( fromField: kv.key ).value ).joined(separator: ",")
-        let insert_values = values.map( kv => kv.value ).joined(separator: ",")
-        let update_set    = values.filter{ kv => kv.key != conflict }.map{ kv => "\(MDBValue( fromField: kv.key ).value) = \(kv.value.value)" }.join( separator: "," )
+        guard let conflict_value = values.first( where: { kv in kv.key == conflict } ) else {
+            return nil
+        }
+        
+        let insert_keys   = values.map{ kv in MDBValue( fromField: kv.key ).value }.joined(separator: ",")
+        let insert_values = values.map{ kv in kv.value.value }.joined(separator: ",")
+        let update_set    = values.filter{ kv in kv.key != conflict }
+                                  .map{ kv in "\(MDBValue( fromField: kv.key ).value) = \(kv.value.value)" }
+                                  .joined( separator: "," )
 
         return """
-                merge into \(table) using dual on (\(conflict) = \(conflict_value.value))
+                merge into \(table) using dual on (\(conflict) = \(conflict_value.value.value))
                  when not matched then insert (\(insert_keys) values (\(insert_values))
                      when matched then update set \(update_set)
                """

@@ -30,7 +30,7 @@ extension MIODBOracleSQLError: LocalizedError {
 }
 
 
-open class MIODBOracleSQL: MIODB
+open class MIODBOracleSQL: MIODB, MDBQueryProtocol
 {
     let defaultPort:Int32 = 1251
     let defaultUser = "root"
@@ -119,6 +119,11 @@ open class MIODBOracleSQL: MIODB
         env  = nil
     }
     
+    @discardableResult open override func execute(_ query: MDBQuery) throws -> [[String : Any]]? {
+        query.delegate = self
+        super.execute( query )
+    }
+    
     @discardableResult open override func executeQueryString(_ query:String) throws -> [[String : Any]]? {
         
         var items:[[String : Any]]?
@@ -197,6 +202,19 @@ open class MIODBOracleSQL: MIODB
 //            try executeQueryString("SET search_path TO \(scheme!), public")
 //            self.scheme = scheme!
 //        }
+    }
+    
+    public func upsert(table: String, values: [(key: String, value: MDBValue)], conflict: String, returning: [String]) -> String? {
+        guard let conflict_value = values.find{ kv => kv.key == conflict }?.value else { return nil }
+        let insert_keys   = values.map( kv => MDBValue( fromField: kv.key ).value ).joined(separator: ",")
+        let insert_values = values.map( kv => kv.value ).joined(separator: ",")
+        let update_set    = values.filter{ kv => kv.key != conflict }.map{ kv => "\(MDBValue( fromField: kv.key ).value) = \(kv.value.value)" }.join( separator: "," )
+
+        return """
+                merge into \(table) using dual on (\(conflict) = \(conflict_value.value))
+                 when not matched then insert (\(insert_keys) values (\(insert_values))
+                     when matched then update set \(update_set)
+               """
     }
 }
 

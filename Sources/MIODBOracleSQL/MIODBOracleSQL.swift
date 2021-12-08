@@ -217,7 +217,7 @@ open class MIODBOracleSQL: MIODB, MDBQueryProtocol
 
         return """
                 merge into \(table) using dual on (\(conflict) = \(conflict_value.value.value))
-                 when not matched then insert (\(insert_keys) values (\(insert_values))
+                 when not matched then insert (\(insert_keys)) values (\(insert_values))
                      when matched then update set \(update_set)
                """
     }

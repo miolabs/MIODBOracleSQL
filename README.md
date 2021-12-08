@@ -35,12 +35,12 @@ A convenient way to set this all up is to have alphabetically ordered scripts in
 
 First we create the user with the file sql/01_users.sql
 
-ALTER SESSION SET CONTAINER = ORCLPDB1;
+ALTER SESSION SET CONTAINER = XEPDB1;
 
 CREATE USER test_user IDENTIFIED BY "some-password";
 Then we give him the permissions with the file sql/02_permissions.sql
 
-ALTER SESSION SET CONTAINER = ORCLPDB1;
+ALTER SESSION SET CONTAINER = XEPDB1;
 
 GRANT CONNECT TO test_user CONTAINER=CURRENT;
 GRANT CREATE SESSION TO test_user CONTAINER=CURRENT;
@@ -49,7 +49,7 @@ GRANT RESOURCE TO test_user CONTAINER=CURRENT;
 ALTER USER test_user QUOTA 100M ON USERS;
 And finally we create the objects with the file sql/03_objects.sql
 
-ALTER SESSION SET CONTAINER = ORCLPDB1;
+ALTER SESSION SET CONTAINER = XEPDB1;
 ALTER SESSION SET CURRENT_SCHEMA = test_user;
 
 CREATE TABLE test_table (

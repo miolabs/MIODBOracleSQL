@@ -32,7 +32,7 @@ extension MIODBOracleSQLError: LocalizedError {
 
 open class MIODBOracleSQL: MIODB, MDBQueryProtocol
 {
-    let defaultPort:Int32 = 1251
+    let defaultPort:Int32 = 1521
     let defaultUser = "root"
     let defaultDatabase = "public"
     

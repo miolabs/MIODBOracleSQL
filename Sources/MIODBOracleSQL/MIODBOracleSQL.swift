@@ -68,8 +68,9 @@ open class MIODBOracleSQL: MIODB, MDBQueryProtocol
         OCIHandleAlloc( env, &err, ub4(OCI_HTYPE_ERROR), 0, nil)
         
         OCIHandleAlloc( env, &srv, ub4(OCI_HTYPE_SERVER), 0, nil)
-                
-        var status = OCIServerAttach( OpaquePointer(srv), OpaquePointer(err), makeCString(database!), sb4(database!.count), 0 )
+        
+        let con_str = "//\(host!):\(port!)/\(database!)"
+        var status = OCIServerAttach( OpaquePointer(srv), OpaquePointer(err), makeCString(con_str), sb4(con_str.count), 0 )
         LogStatus(status, err)
         
         OCIHandleAlloc( UnsafeRawPointer(env), &svc, ub4(OCI_HTYPE_SVCCTX), 0, nil)

@@ -1,6 +1,6 @@
 # MIODBOracleSQL
 
-A description of this package.
+MIODB Wrapper to connect with Oracle Databases through Oracle Call Interface (OCI) 
 
 #INSTALLATION
 
@@ -12,6 +12,10 @@ $ brew install instantclient-sdk
 Optional: 
 $ brew install instantclient-sqlplus
 
+
+#TESTING
+
+Oracle Docker DB Image can be found at: https://github.com/oracle/docker-images/blob/main/OracleDatabase/SingleInstance/README.md
 
 #CREDITS
 

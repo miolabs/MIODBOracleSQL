@@ -71,7 +71,7 @@ open class MIODBOracleSQL: MIODB, MDBQueryProtocol
         
         let con_str = "//\(host!):\(port!)/\(database!)"
         var status = OCIServerAttach( OpaquePointer(srv), OpaquePointer(err), makeCString(con_str), sb4(con_str.count), 0 )
-        LogStatus(status, err)
+        LogStatus(status, err, "SERVER ATTACH")
         
         OCIHandleAlloc( UnsafeRawPointer(env), &svc, ub4(OCI_HTYPE_SVCCTX), 0, nil)
         
@@ -85,7 +85,7 @@ open class MIODBOracleSQL: MIODB, MDBQueryProtocol
         OCIAttrSet( auth, ub4(OCI_HTYPE_SESSION), makeCString(password!), ub4(password!.count), ub4(OCI_ATTR_PASSWORD), OpaquePointer(err))
 
         status = OCISessionBegin ( OpaquePointer(svc), OpaquePointer(err), OpaquePointer(auth), ub4(OCI_CRED_RDBMS), ub4(OCI_DEFAULT) )
-        LogStatus(status, err)
+        LogStatus(status, err, "SESSION BEGIN")
         
         OCIAttrSet(svc, ub4(OCI_HTYPE_SVCCTX), auth, 0, ub4(OCI_ATTR_SESSION), OpaquePointer(err) )
     }
@@ -95,12 +95,12 @@ open class MIODBOracleSQL: MIODB, MDBQueryProtocol
         // Close connection
         if svc != nil && err != nil && auth != nil {
             let status = OCISessionEnd( OpaquePointer(svc), OpaquePointer(err), OpaquePointer(auth), 0 )
-            LogStatus(status, err)
+            LogStatus(status, err, "SESSION END")
         }
         
         if srv != nil && err != nil {
             let status = OCIServerDetach( OpaquePointer(srv), OpaquePointer(err), ub4(OCI_DEFAULT) )
-            LogStatus(status, err)
+            LogStatus(status, err, "SERVER DETACH")
         }
         
         // Free handles
@@ -127,6 +127,8 @@ open class MIODBOracleSQL: MIODB, MDBQueryProtocol
     
     @discardableResult open override func executeQueryString(_ query:String) throws -> [[String : Any]]? {
         
+        print("QUERY: \(query)")
+        
         var items:[[String : Any]]?
 //        try MIOCoreAutoReleasePool {
             items = try _executeQueryString(query)
@@ -143,18 +145,18 @@ open class MIODBOracleSQL: MIODB, MDBQueryProtocol
 
         var stmt:OpaquePointer?
         var status = OCIStmtPrepare2( OpaquePointer(svc), &stmt, OpaquePointer(err), makeCString(query), ub4(query.count), nil, 0, ub4(OCI_NTV_SYNTAX), ub4(OCI_DEFAULT) )
-        LogStatus(status, err)
+        LogStatus(status, err, "STMT PREPARE")
         
         var type = 0
         var type_len = ub4(0)
         status = OCIAttrGet( UnsafeRawPointer(stmt), ub4(OCI_HTYPE_STMT), &type, &type_len, ub4(OCI_ATTR_STMT_TYPE), OpaquePointer(err) )
-        LogStatus(status, err)
+        LogStatus(status, err, "STMT GET")
         
         
         /* execute and fetch */
         
         status = OCIStmtExecute( OpaquePointer(svc), stmt, OpaquePointer(err), type == OCI_STMT_SELECT ? 0 : 1, 0, nil, nil, ub4(OCI_DEFAULT) )
-        LogStatus(status, err)
+        LogStatus(status, err, "STMT EXECUTE")
                         
         if (status == OCI_NO_DATA) { return [] }
         
@@ -163,14 +165,14 @@ open class MIODBOracleSQL: MIODB, MDBQueryProtocol
         var count = ub4(1)
         var param:UnsafeMutableRawPointer?
         status = OCIParamGet( UnsafeRawPointer(stmt), ub4(OCI_HTYPE_STMT), OpaquePointer(err), &param, count)
-        LogStatus(status, err)
+        LogStatus(status, err, "GET PARAM")
         
         var fields:[Field] = []
         while (status == OCI_SUCCESS) {
             fields.append ( Field(index: count, stmt: stmt, param: param, env:OpaquePointer(env), err: err) )
             count += 1
             status = OCIParamGet( UnsafeRawPointer(stmt), ub4(OCI_HTYPE_STMT), OpaquePointer(err), &param, count)
-            LogStatus(status, err)
+            LogStatus(status, err, "GET FIELD")
         }
         
         var items:[[String : Any]] = []
@@ -179,7 +181,7 @@ open class MIODBOracleSQL: MIODB, MDBQueryProtocol
         
         while status == OCI_SUCCESS {
             status = OCIStmtFetch2( stmt, OpaquePointer(err), 1, ub2(OCI_FETCH_NEXT), 0, ub4(OCI_DEFAULT) )
-            LogStatus(status, err)
+            LogStatus(status, err, "FETCH")
             if status == OCI_NO_DATA || (status != OCI_SUCCESS && status != OCI_SUCCESS_WITH_INFO) { break }
             
             var item:[String:Any] = [:]
@@ -259,13 +261,13 @@ class Field {
        */
 
         var status = OCIAttrGet( param, ub4(OCI_DTYPE_PARAM), &_name, &name_len, ub4(OCI_ATTR_NAME), OpaquePointer(err) )
-        LogStatus(status, err)
+        LogStatus(status, err, "GET FIELD")
         if status != OCI_SUCCESS { return }
 
         name = String(cString: _name!)
                 
         status = OCIAttrGet( param, ub4(OCI_DTYPE_PARAM), &type, nil, ub4(OCI_ATTR_DATA_TYPE), OpaquePointer(err) )
-        LogStatus(status, err)
+        LogStatus(status, err, "GET TYPE")
         if status != OCI_SUCCESS { return }
         
         /*
@@ -273,7 +275,7 @@ class Field {
         */
 
         status = OCIAttrGet( param, ub4(OCI_DTYPE_PARAM), &value_len, nil, ub4(OCI_ATTR_DATA_SIZE), OpaquePointer(err) )
-        LogStatus(status, err)
+        LogStatus(status, err, "GET VALUE LEN")
         if status != OCI_SUCCESS { return }
                         
 //        var utf8 = Array("".utf8)
@@ -285,7 +287,7 @@ class Field {
 //        if type == 1 {
             _value = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: Int(1024))
         status = OCIDefineByPos( stmt, &define, OpaquePointer(err), index, _value!.baseAddress, sb4(1024), ub2(SQLT_STR), nil, &len, &rcode, ub4(OCI_DEFAULT) )
-             LogStatus(status, err)
+             LogStatus(status, err, "DEFINE BY POS")
 
 //        }
 //        else if type == 2 {
@@ -320,17 +322,17 @@ class Field {
 }
 
 
-func LogStatus(_ status:Int32, _ err:UnsafeMutableRawPointer?) {
+func LogStatus(_ status:Int32, _ err:UnsafeMutableRawPointer?, _ stage:String) {
     var statusMessage = "Unknown"
     var errcode = sb4(0)
     switch(status){
-        case OCI_SUCCESS:           statusMessage = "SUCCESS"
-        case OCI_SUCCESS_WITH_INFO: statusMessage = "Error - OCI_SUCCESS_WITH_INFO"
-        case OCI_NEED_DATA:         statusMessage = "Error - OCI_NEED_DATA"
-        case OCI_NO_DATA:           statusMessage = "Error - OCI_NODATA"
-        case OCI_INVALID_HANDLE:    statusMessage = "Error - OCI_INVALID_HANDLE"
-        case OCI_STILL_EXECUTING:   statusMessage = "Error - OCI_STILL_EXECUTE"
-        case OCI_CONTINUE:          statusMessage = "Error - OCI_CONTINUE"
+        case OCI_SUCCESS:           statusMessage = "\(stage): SUCCESS"
+        case OCI_SUCCESS_WITH_INFO: statusMessage = "\(stage): Error - OCI_SUCCESS_WITH_INFO"
+        case OCI_NEED_DATA:         statusMessage = "\(stage): Error - OCI_NEED_DATA"
+        case OCI_NO_DATA:           statusMessage = "\(stage): Error - OCI_NODATA"
+        case OCI_INVALID_HANDLE:    statusMessage = "\(stage): Error - OCI_INVALID_HANDLE"
+        case OCI_STILL_EXECUTING:   statusMessage = "\(stage): Error - OCI_STILL_EXECUTE"
+        case OCI_CONTINUE:          statusMessage = "\(stage): Error - OCI_CONTINUE"
         case OCI_ERROR:
             let errbuf = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: 512)
             OCIErrorGet(err, ub4(1), nil, &errcode, errbuf.baseAddress!, ub4(512), ub4(OCI_HTYPE_ERROR))
@@ -338,7 +340,7 @@ func LogStatus(_ status:Int32, _ err:UnsafeMutableRawPointer?) {
         default: break
     }
 
-    print("[MIODBOracleSQLError] Status message: \(errcode) \(statusMessage)")
+    print("[MIODBOracleSQLError] Status message: \(stage) \(errcode) \(statusMessage)")
 }
 
 

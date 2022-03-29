@@ -174,9 +174,9 @@ open class MIODBOracleSQL: MIODB, MDBQueryProtocol
                         
         if (status == OCI_NO_DATA) { return [] }
         
-//        if !isSuccess() {
-//            throw MIODBOracleSQLError.statusError(status, error: "Can't STMT execute")
-//        }
+        if !isSuccess() {
+            throw MIODBOracleSQLError.statusError(status, error: "Can't STMT execute")
+        }
         
         /* Loop only if a descriptor was successfully retrieved for
            current position, starting at 1 */

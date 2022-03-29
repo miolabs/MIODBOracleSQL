@@ -185,9 +185,9 @@ open class MIODBOracleSQL: MIODB, MDBQueryProtocol
         status = OCIParamGet( UnsafeRawPointer(stmt), ub4(OCI_HTYPE_STMT), OpaquePointer(err), &param, count)
         LogStatus(status, err, "GET PARAM")
         
-        if !isSuccess() {
-            throw MIODBOracleSQLError.statusError(status, error: "Can't GET PARAM")
-        }
+//        if !isSuccess() {
+//            throw MIODBOracleSQLError.statusError(status, error: "Can't GET PARAM")
+//        }
 
         
         var fields:[Field] = []
@@ -197,9 +197,9 @@ open class MIODBOracleSQL: MIODB, MDBQueryProtocol
             status = OCIParamGet( UnsafeRawPointer(stmt), ub4(OCI_HTYPE_STMT), OpaquePointer(err), &param, count)
             LogStatus(status, err, "GET FIELD")
             
-            if !isSuccess() {
-                throw MIODBOracleSQLError.statusError(status, error: "Can't GET FIELD")
-            }
+//            if !isSuccess() {
+//                throw MIODBOracleSQLError.statusError(status, error: "Can't GET FIELD")
+//            }
 
         }
         

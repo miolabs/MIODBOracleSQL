@@ -72,6 +72,9 @@ open class MIODBOracleSQL: MIODB, MDBQueryProtocol
         let con_str = "//\(host!):\(port!)/\(database!)"
         var status = OCIServerAttach( OpaquePointer(srv), OpaquePointer(err), makeCString(con_str), sb4(con_str.count), 0 )
         LogStatus(status, err, "SERVER ATTACH")
+        if status != OCI_SUCCESS {
+            throw MIODBOracleSQLError.statusError(status, error: "Can't attach server session")
+        }
         
         OCIHandleAlloc( UnsafeRawPointer(env), &svc, ub4(OCI_HTYPE_SVCCTX), 0, nil)
         
@@ -86,6 +89,10 @@ open class MIODBOracleSQL: MIODB, MDBQueryProtocol
 
         status = OCISessionBegin ( OpaquePointer(svc), OpaquePointer(err), OpaquePointer(auth), ub4(OCI_CRED_RDBMS), ub4(OCI_DEFAULT) )
         LogStatus(status, err, "SESSION BEGIN")
+        if status != OCI_SUCCESS {
+            throw MIODBOracleSQLError.statusError(status, error: "Can't start server session begin")
+        }
+
         
         OCIAttrSet(svc, ub4(OCI_HTYPE_SVCCTX), auth, 0, ub4(OCI_ATTR_SESSION), OpaquePointer(err) )
     }
@@ -138,7 +145,7 @@ open class MIODBOracleSQL: MIODB, MDBQueryProtocol
     }
     
     @discardableResult open func _executeQueryString(_ query:String) throws -> [[String : Any]]? {
-        
+                        
 //        var stmt:UnsafeMutableRawPointer?
 //        var status = OCIHandleAlloc( env, &stmt, ub4(OCI_HTYPE_STMT), 0, nil)
 //        LogStatus(status, err)
@@ -146,19 +153,30 @@ open class MIODBOracleSQL: MIODB, MDBQueryProtocol
         var stmt:OpaquePointer?
         var status = OCIStmtPrepare2( OpaquePointer(svc), &stmt, OpaquePointer(err), makeCString(query), ub4(query.count), nil, 0, ub4(OCI_NTV_SYNTAX), ub4(OCI_DEFAULT) )
         LogStatus(status, err, "STMT PREPARE")
+        if status != OCI_SUCCESS {
+            throw MIODBOracleSQLError.statusError(status, error: "Can't STMT prepare")
+        }
         
         var type = 0
         var type_len = ub4(0)
         status = OCIAttrGet( UnsafeRawPointer(stmt), ub4(OCI_HTYPE_STMT), &type, &type_len, ub4(OCI_ATTR_STMT_TYPE), OpaquePointer(err) )
         LogStatus(status, err, "STMT GET")
-        
+        if status != OCI_SUCCESS {
+            throw MIODBOracleSQLError.statusError(status, error: "Can't STMT get")
+        }
         
         /* execute and fetch */
+        
+        func isSuccess () -> Bool { return status == OCI_SUCCESS || status == OCI_SUCCESS_WITH_INFO }
         
         status = OCIStmtExecute( OpaquePointer(svc), stmt, OpaquePointer(err), type == OCI_STMT_SELECT ? 0 : 1, 0, nil, nil, ub4(OCI_DEFAULT) )
         LogStatus(status, err, "STMT EXECUTE")
                         
         if (status == OCI_NO_DATA) { return [] }
+        
+        if !isSuccess() {
+            throw MIODBOracleSQLError.statusError(status, error: "Can't STMT execute")
+        }
         
         /* Loop only if a descriptor was successfully retrieved for
            current position, starting at 1 */
@@ -167,12 +185,22 @@ open class MIODBOracleSQL: MIODB, MDBQueryProtocol
         status = OCIParamGet( UnsafeRawPointer(stmt), ub4(OCI_HTYPE_STMT), OpaquePointer(err), &param, count)
         LogStatus(status, err, "GET PARAM")
         
+        if !isSuccess() {
+            throw MIODBOracleSQLError.statusError(status, error: "Can't GET PARAM")
+        }
+
+        
         var fields:[Field] = []
         while (status == OCI_SUCCESS) {
             fields.append ( Field(index: count, stmt: stmt, param: param, env:OpaquePointer(env), err: err) )
             count += 1
             status = OCIParamGet( UnsafeRawPointer(stmt), ub4(OCI_HTYPE_STMT), OpaquePointer(err), &param, count)
             LogStatus(status, err, "GET FIELD")
+            
+            if !isSuccess() {
+                throw MIODBOracleSQLError.statusError(status, error: "Can't GET FIELD")
+            }
+
         }
         
         var items:[[String : Any]] = []
@@ -182,7 +210,7 @@ open class MIODBOracleSQL: MIODB, MDBQueryProtocol
         while status == OCI_SUCCESS {
             status = OCIStmtFetch2( stmt, OpaquePointer(err), 1, ub2(OCI_FETCH_NEXT), 0, ub4(OCI_DEFAULT) )
             LogStatus(status, err, "FETCH")
-            if status == OCI_NO_DATA || (status != OCI_SUCCESS && status != OCI_SUCCESS_WITH_INFO) { break }
+            if status == OCI_NO_DATA || !isSuccess() { break }
             
             var item:[String:Any] = [:]
             for f in fields {
@@ -191,8 +219,7 @@ open class MIODBOracleSQL: MIODB, MDBQueryProtocol
             
             items.append(item)
         }
-                                                    
-                            
+                                                                                
         return items
     }
         

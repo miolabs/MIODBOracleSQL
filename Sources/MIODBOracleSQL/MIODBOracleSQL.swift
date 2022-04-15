@@ -367,7 +367,7 @@ func LogStatus(_ status:Int32, _ err:UnsafeMutableRawPointer?, _ stage:String) {
         default: break
     }
 
-    print("[MIODBOracleSQLError] Status message: \(stage) \(errcode) \(statusMessage)")
+    print("[MIODBOracleSQLError] Status message: \(stage) - \(status) : \(errcode) = \(statusMessage)")
 }
 
 

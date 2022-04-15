@@ -361,8 +361,8 @@ func LogStatus(_ status:Int32, _ err:UnsafeMutableRawPointer?, _ stage:String) {
         case OCI_STILL_EXECUTING:   statusMessage = "\(stage): Error - OCI_STILL_EXECUTE"
         case OCI_CONTINUE:          statusMessage = "\(stage): Error - OCI_CONTINUE"
         case OCI_ERROR:
-            let errbuf = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: 512)
-            OCIErrorGet(err, ub4(1), nil, &errcode, errbuf.baseAddress!, ub4(512), ub4(OCI_HTYPE_ERROR))
+            let errbuf = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: 2048)
+            OCIErrorGet(err, ub4(1), nil, &errcode, errbuf.baseAddress!, ub4(2048), ub4(OCI_HTYPE_ERROR))
             statusMessage = String(data: Data(errbuf), encoding: .utf8 ) ?? "Unknown"
         default: break
     }
